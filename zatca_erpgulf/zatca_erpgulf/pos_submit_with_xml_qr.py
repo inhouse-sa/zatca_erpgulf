@@ -1,5 +1,6 @@
 """This module is used to submit the POS invoice to ZATCA using the API through xml and qr."""
 
+from frappe import _
 import frappe
 import requests
 from lxml import etree
@@ -68,7 +69,7 @@ def reporting_api_machine(
 
         if not company_abbr:
             frappe.throw(
-                f"Company with abbreviation {pos_invoice_doc.company} not found."
+                _(f"Company with abbreviation {pos_invoice_doc.company} not found.")
             )
 
         # Prepare the payload without JSON formatting
@@ -81,17 +82,17 @@ def reporting_api_machine(
         # Directly retrieve the production CSID from the company's document field
         if not pos_invoice_doc.custom_zatca_pos_name:
             frappe.throw(
-                f"ZATCA POS name is missing for invoice resporting {invoice_number}."
+                _(f"ZATCA POS name is missing for invoice resporting {invoice_number}.")
             )
 
         zatca_settings = frappe.get_doc(
-            "Zatca Multiple Setting", pos_invoice_doc.custom_zatca_pos_name
+            "ZATCA Multiple Setting", pos_invoice_doc.custom_zatca_pos_name
         )
         production_csid = zatca_settings.custom_final_auth_csid
 
         if not production_csid:
             frappe.throw(
-                f"Production CSID is missing in ZATCA settings for {company_abbr}."
+                _(f"Production CSID is missing in ZATCA settings for {company_abbr}.")
             )
         headers = {
             "accept": CONTENT_TYPE_JSON,
@@ -137,11 +138,13 @@ def reporting_api_machine(
                     update_modified=True,
                 )
                 frappe.throw(
-                    (
-                        "Error: The request you are sending to Zatca is in incorrect format. "
-                        "Please report to system administrator. "
-                        f"Status code: {response.status_code}<br><br> "
-                        f"{response.text}"
+                    _(
+                        (
+                            "Error: The request you are sending to ZATCA is in incorrect format. "
+                            "Please report to system administrator. "
+                            f"Status code: {response.status_code}<br><br> "
+                            f"{response.text}"
+                        )
                     )
                 )
 
@@ -163,12 +166,14 @@ def reporting_api_machine(
                     update_modified=True,
                 )
                 frappe.throw(
-                    (
-                        "Error: Zatca Authentication failed."
-                        "Your access token may be expired or not valid. "
-                        "Please contact your system administrator. "
-                        f"Status code: {response.status_code}<br><br> "
-                        f"{response.text}"
+                    _(
+                        (
+                            "Error: ZATCA Authentication failed."
+                            "Your access token may be expired or not valid. "
+                            "Please contact your system administrator. "
+                            f"Status code: {response.status_code}<br><br> "
+                            f"{response.text}"
+                        )
                     )
                 )
 
@@ -190,11 +195,13 @@ def reporting_api_machine(
                     update_modified=True,
                 )
                 frappe.throw(
-                    (
-                        "Error: Zatca server busy or not responding."
-                        " Try after sometime or contact your system administrator. "
-                        f"Status code: {response.status_code}<br><br> "
-                        f"{response.text}"
+                    _(
+                        (
+                            "Error: ZATCA server busy or not responding."
+                            " Try after sometime or contact your system administrator. "
+                            f"Status code: {response.status_code}<br><br> "
+                            f"{response.text}"
+                        )
                     )
                 )
 
@@ -210,7 +217,7 @@ def reporting_api_machine(
                 )
                 msg += (
                     f"Status Code: {response.status_code}<br><br>"
-                    f"Zatca Response: {response.text}<br><br>"
+                    f"ZATCA Response: {response.text}<br><br>"
                 )
 
                 # company_name = pos_invoice_doc.company
@@ -236,10 +243,19 @@ def reporting_api_machine(
             else:
                 error_log()
         except (ValueError, TypeError, KeyError) as e:
-            frappe.throw(("Error in reporting API-2 POS with xml " f"error: {str(e)}"))
+            frappe.throw(
+                _(("Error in reporting API-2 POS with xml " f"error: {str(e)}"))
+            )
 
     except (ValueError, TypeError, KeyError, frappe.ValidationError) as e:
-        frappe.throw(("Error in reporting API-1 with xml pos" f"error: {str(e)}"))
+        invoice_doc = frappe.get_doc("POS Invoice", invoice_number)
+        invoice_doc.db_set(
+            "custom_zatca_full_response",
+            f"Error: {str(e)}",
+            commit=True,
+            update_modified=True,
+        )
+        frappe.throw(_(("Error in reporting API-1 with xml pos" f"error: {str(e)}")))
 
 
 def submit_pos_withxmlqr(pos_invoice_doc, file_path, invoice_number):
@@ -259,4 +275,4 @@ def submit_pos_withxmlqr(pos_invoice_doc, file_path, invoice_number):
         )
 
     except Exception as e:
-        frappe.throw(f"Error in submitting POS invoice with xml and qr: {str(e)}")
+        frappe.throw(_(f"Error in submitting POS invoice with xml and qr: {str(e)}"))

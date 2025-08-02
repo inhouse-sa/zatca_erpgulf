@@ -42,7 +42,7 @@ bench --site yoursite.erpgulf.com install-app zatca_erpgulf
 # Apply necessary migrations
 bench --site yoursite.erpgulf.com migrate
 
-# Researt bench or supervisor
+# Restart bench or supervisor
 bench restart 
 or
 sudo service supervisor restart
@@ -87,5 +87,3 @@ For implementation support or customization, contact:
 👥 Social
 
 🚀 Now you’re ready to be fully ZATCA-compliant! 🎯
-
-Let me know if you need any further modifications! 😊🔥

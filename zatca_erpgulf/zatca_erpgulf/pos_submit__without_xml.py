@@ -1,6 +1,7 @@
 """This file contains the function to call the ZATCA API for POS Invoices"""
 
 import base64
+from frappe import _  # pylint: disable=unused-import
 import frappe
 import requests
 from zatca_erpgulf.zatca_erpgulf.sales_invoice_with_xmlqr import (
@@ -62,7 +63,7 @@ def zatca_call_pos_without_xml(
     company_abbr=None,
     source_doc=None,
 ):
-    """Function for zatca call"""
+    """Function for ZATCA call"""
     try:
 
         if not frappe.db.exists(POS_INVOICE, invoice_number):
@@ -168,7 +169,9 @@ def zatca_call_pos_without_xml(
 
             else:
                 frappe.throw(
-                    "B2B is not supported for POS Invoices,customer should be B2C pos without xml "
+                    _(
+                        "B2B is not supported for POS Invoices,customer should be B2C pos without xml "
+                    )
                 )
         else:
             compliance_api_call(
@@ -178,7 +181,7 @@ def zatca_call_pos_without_xml(
 
     except (ValueError, KeyError, TypeError, frappe.ValidationError) as e:
         frappe.log_error(
-            title="Zatca invoice call failed",
+            title="ZATCA invoice call failed",
             message=f"{frappe.get_traceback()} \n Error: {str(e)}",
         )
 
@@ -195,7 +198,7 @@ def reporting_api_pos_without_xml(
         company_doc = frappe.get_doc("Company", {"abbr": company_abbr})
         if not company_abbr:
             frappe.throw(
-                f"Company with abbreviation {pos_invoice_doc.company} not found."
+                _(f"Company with abbreviation {pos_invoice_doc.company} not found.")
             )
 
         # Prepare the payload without JSON formatting
@@ -219,23 +222,26 @@ def reporting_api_pos_without_xml(
         )
         file.is_private = 1
         file.save(ignore_permissions=True)
+        pos_invoice_doc.db_set("custom_ksa_einvoicing_xml", file.file_url)
         if file.is_private == 0:
             frappe.db.set_value("File", file.name, "is_private", 1)
             frappe.db.commit()
         # Directly retrieve the production CSID from the company's document field
         if not pos_invoice_doc.custom_zatca_pos_name:
             frappe.throw(
-                f"ZATCA POS name is missing for invoice pos withoutxml {invoice_number}."
+                _(
+                    f"ZATCA POS name is missing for invoice pos withoutxml {invoice_number}."
+                )
             )
 
         zatca_settings = frappe.get_doc(
-            "Zatca Multiple Setting", pos_invoice_doc.custom_zatca_pos_name
+            "ZATCA Multiple Setting", pos_invoice_doc.custom_zatca_pos_name
         )
         production_csid = zatca_settings.custom_final_auth_csid
 
         if not production_csid:
             frappe.throw(
-                f"Production CSID is missing in ZATCA settings for {company_abbr}."
+                _(f"Production CSID is missing in ZATCA settings for {company_abbr}.")
             )
         headers = {
             "accept": CONTENT_TYPE_JSON,
@@ -284,11 +290,13 @@ def reporting_api_pos_without_xml(
                         update_modified=True,
                     )
                     frappe.throw(
-                        (
-                            "Error: The request you are sending to Zatca is in incorrect format. "
-                            "Please report to system administrator. "
-                            f"Status code: {response.status_code}<br><br> "
-                            f"{response.text}"
+                        _(
+                            (
+                                "Error: The request you are sending to ZATCA is in incorrect format. "
+                                "Please report to system administrator. "
+                                f"Status code: {response.status_code}<br><br> "
+                                f"{response.text}"
+                            )
                         )
                     )
 
@@ -313,12 +321,14 @@ def reporting_api_pos_without_xml(
                         update_modified=True,
                     )
                     frappe.throw(
-                        (
-                            "Error: Zatca Authentication failed."
-                            "Your access token may be expired or not valid. "
-                            "Please contact your system administrator. "
-                            f"Status code: {response.status_code}<br><br> "
-                            f"{response.text}"
+                        _(
+                            (
+                                "Error: ZATCA Authentication failed."
+                                "Your access token may be expired or not valid. "
+                                "Please contact your system administrator. "
+                                f"Status code: {response.status_code}<br><br> "
+                                f"{response.text}"
+                            )
                         )
                     )
 
@@ -343,11 +353,13 @@ def reporting_api_pos_without_xml(
                         update_modified=True,
                     )
                     frappe.throw(
-                        (
-                            "Error: Zatca server busy or not responding."
-                            " Try after sometime or contact your system administrator. "
-                            f"Status code: {response.status_code}<br><br> "
-                            f"{response.text}"
+                        _(
+                            (
+                                "Error: ZATCA server busy or not responding."
+                                " Try after sometime or contact your system administrator. "
+                                f"Status code: {response.status_code}<br><br> "
+                                f"{response.text}"
+                            )
                         )
                     )
 
@@ -363,7 +375,7 @@ def reporting_api_pos_without_xml(
                     )
                     msg += (
                         f"Status Code: {response.status_code}<br><br>"
-                        f"Zatca Response: {response.text}<br><br>"
+                        f"ZATCA Response: {response.text}<br><br>"
                     )
                     if pos_invoice_doc.custom_zatca_pos_name:
                         if (
@@ -397,8 +409,15 @@ def reporting_api_pos_without_xml(
                     error_log()
             except (ValueError, TypeError, KeyError) as e:
                 frappe.throw(
-                    ("Error in reporting API-2 pos without xml " f"error: {str(e)}")
+                    _(("Error in reporting API-2 pos without xml " f"error: {str(e)}"))
                 )
 
     except (ValueError, TypeError, KeyError, frappe.ValidationError) as e:
-        frappe.throw(("Error in reporting API-1 pos without xml" f"error: {str(e)}"))
+        invoice_doc = frappe.get_doc("POS Invoice", invoice_number)
+        invoice_doc.db_set(
+            "custom_zatca_full_response",
+            f"Error: {str(e)}",
+            commit=True,
+            update_modified=True,
+        )
+        frappe.throw(_(("Error in reporting API-1 pos without xml" f"error: {str(e)}")))
